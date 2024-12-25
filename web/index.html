@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Large File</title>
+    <style>
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        row-gap: 14px;
+      }
+
+      .upload_box {
+        display: flex;
+        flex-direction: column;
+        row-gap: 14px;
+      }
+
+      #progress {
+        color: darkseagreen;
+        font-size: 16px;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <h1>Upload Large File</h1>
+      <section class="upload_box">
+        <input type="file" id="upload_file_input" />
+        <button type="button" id="upload_btn">Submit</button>
+      </section>
+      <p id="progress"></p>
+    </main>
+  </body>
+  <script>
+    const uploadButtonEl = document.getElementById("upload_btn");
+    const uploadNotifEl = document.getElementById("upload_notification");
+    const inputFileEl = document.getElementById("upload_file_input");
+    const progressTextEl = document.getElementById("progress");
+
+    const updateProgress = (progress) => {
+      progressTextEl.textContent = `Progress:  ${progress}%`;
+      console.log(progress);
+    };
+
+    const chunkedFileUploader = async (formData) => {
+      const respHeader = await fetch("http://localhost:8080/upload-chunk", {
+        method: "POST",
+        body: formData,
+      });
+    };
+
+    const uploadFileHandler = async (e) => {
+      const file = inputFileEl.files[0];
+
+      const fileSize = file.size; // File size in bytes
+
+      const CHUNK_SIZE = 1024 * 1024;
+      const totalChunk = Math.ceil(fileSize / CHUNK_SIZE);
+      const filename = `${Date.now()}` + file.name;
+
+      for (let i = 0; i < totalChunk; i++) {
+        const startChunk = i * CHUNK_SIZE;
+        const endChunk = i * CHUNK_SIZE + CHUNK_SIZE;
+        const chunk = file.slice(startChunk, endChunk);
+
+        const formData = new FormData();
+        formData.append("data", chunk);
+        formData.append("filename", filename);
+        formData.append("totalChunk", totalChunk);
+        formData.append("currentChunk", i + 1);
+        await chunkedFileUploader(formData);
+
+        const progress = (i + 1) / totalChunk; // 0 - 1
+        updateProgress(Math.round(progress * 100));
+      }
+
+      inputFileEl.value = null;
+    };
+
+    uploadButtonEl.addEventListener("click", uploadFileHandler);
+  </script>
+</html>
